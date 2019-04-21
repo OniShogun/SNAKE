@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html>
+	<title></title>
+	<head></head>
+	<style>
+		body {
+			background: black;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+		canvas{
+			padding: 0;
+			margin: auto;
+			display: block;
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			right: 0;
+		}
+		#menuDiv{
+			padding : 35px;
+			margin:auto;
+			display:block;
+			width:400px;
+			height:400px;
+			position:absolute;
+			border : 10px solid green;
+			color: black;
+			background-color: aquamarine;
+			text-align:center;
+			line-height:0.8cm;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			font-family : Impact, Charcoal, sans-serif;
+		}
+		#scoreText{
+			color : white;
+			position : fixed;
+			bottom : 3px;
+			right : 200px;
+			font-family: Arial, Helvetica, sans-serif;
+			font-size : 35px;
+		}
+		#gameOver{
+			color : yellow;
+			position : relative;
+			display : block;
+			font-family: Arial, Helvetica, sans-serif;
+			visibility: hidden;
+			top : 200px;
+			text-align :center;
+		}
+		#levelText{
+			color : white;
+			position : fixed;
+			bottom : 3px;
+			left : 200px;
+			font-family: Arial, Helvetica, sans-serif;
+			font-size : 35px;
+		}
+		input[type=number]{
+			width : 60px;
+			font-size :25px;
+			text-align : center;
+		}
+		#speedInvalid, #levelInvalid{
+			visibility : hidden;
+			color : red;
+			font-size : 25px;
+		}
+		p,span,input[type=button]{
+			font-size : 25px;
+		}
+		#maze{
+			background : olive;
+		}
+		
+	</style>
+	<body>
+		<canvas id="maze">
+			<!-- Insert fallback content here -->
+		</canvas>
+		<canvas id="snake">
+			<!-- Insert fallback content here -->
+		</canvas>
+		<div id="menuDiv">
+			<p>CHOOSE LEVEL (1 - <span id="totalLevel">2</span>)</p> <input type="number" value="1" id="level">
+			<p id="levelInvalid">LEVEL IS INVALID</p>
+			<p>TURNING SPEED (1:slowest - 10:fastest)</p><input type="number" value="1" id="speed">
+			<p id="speedInvalid">TURNING SPEED IS INVALID</p>
+			<input type="button" value="OK" id="ok">
+		</div>
+		
+		<h1 id="scoreText">Score : <span id='score' style="font-size:35px">0</span></h1>
+		<h1 id="levelText">Level <span id='levels' style="font-size:35px">--</span></h1>
+		<div id="gameOver">
+			<p>GAME OVER!</p>
+			<p>Press Enter button to try again</p>
+			<p>Your final score is : <span id="finalScore">0</span></p>
+		</div>
+		<script src="jquery-3.2.1.min.js"></script>
+		<script src="DrawingObject.js" type="text/javascript"></script>
+		<script src="Apple.js" type="text/javascript"></script>
+		<script src="Snake.js" type="text/javascript"></script>
+		<script src="Maze.js" type="text/javascript"></script>
+	</body>
+</html>
+<script type="text/javascript">
+	const CANVAS_SIZE = 600;
+	const GRID_SIZE = 10;
+
+	const BESAR_ULAR = GRID_SIZE;
+	const BESAR_APEL = GRID_SIZE*2;
+	const BESAR_DINDING = GRID_SIZE;
+	//kelas Game
+	// 900 375
+	function Game(){
+		this.mazeCanvas = document.getElementById('maze');
+		this.contextMaze = this.mazeCanvas.getContext('2d');
+		this.myCanvas = document.getElementById('snake');
+		this.context = this.myCanvas.getContext('2d');
+		
+		this.mazeCanvas.width = CANVAS_SIZE;
+		this.mazeCanvas.height = CANVAS_SIZE;
+		this.myCanvas.width = CANVAS_SIZE;
+		this.myCanvas.height = CANVAS_SIZE;
+		this.mazeCanvas.style.border = "5px solid white";
+		this.myCanvas.style.border = "5px solid white";
+		
+		this.sudut = 0;
+		var score = 0;
+		this.gameOver = false;
+		this.turningSpeed;
+		
+		this.apel = new Apple(BESAR_APEL);
+		this.ular = new Snake(BESAR_ULAR);
+		this.maze = new Maze(BESAR_DINDING);
+		this.drawingObj = new DrawingObject(this.context,this.contextMaze);
+		
+		//method untuk random posisi apel
+		this.randomApple = function(){
+			const width = this.myCanvas.width-this.apel.getBesarApel();
+			const height = this.myCanvas.height-this.apel.getBesarApel();
+			
+			let randomX = Math.floor(Math.random()*width);
+			let randomY = Math.floor(Math.random()*height);
+			
+			this.moveApple(randomX,randomY);
+			
+			let arrayLayout = this.maze.getMazeLayout();
+			let dindingX = Math.floor(randomX/10);
+			let dindingY = Math.floor(randomY/10);
+		
+			for(var i = 0; i< this.ular.tubuhSnake.length-1;i++){
+				let posisiXUlar = this.ular.tubuhSnake[i].x;
+				let posisiYUlar = this.ular.tubuhSnake[i].y;
+				
+				if(posisiXUlar > randomX && posisiYUlar > randomY &&
+					posisiXUlar < randomX+this.apel.besarApel && posisiYUlar < randomY+this.apel.besarApel){
+						if(arrayLayout[dindingY].charAt(dindingX) == '#'){
+							this.moveApple(randomX,randomY);
+						}
+				}
+				else{
+					break;
+				}
+			}
+			
+			this.drawingObj.drawApple(this.apel.x,this.apel.y,this.apel.getBesarApel());
+		}
+		
+		//method untuk memindahkan apel
+		this.moveApple = function(x,y){
+			this.apel.x = x;
+			this.apel.y = y;
+		}
+		
+		//method untuk mengarahkan ular ke atas,bawah,kiri,kanan
+		this.moveLeft = function(){
+			this.sudut-=this.turningSpeed;
+			console.log(this.sudut);
+			if(this.sudut < 0){
+				this.sudut = 360;
+			}
+		}
+		this.moveRight = function(){
+			this.sudut+=this.turningSpeed;
+			console.log(this.sudut);
+			console.log(typeof(this.turningSpeed));
+			if(this.sudut > 360){
+				this.sudut = 0;
+			}
+		}
+		
+		
+		//method supaya ular dapat keluar dari sisi lain 
+		this.sampaiUjung = function(){
+			if (this.ular.x < 0) {
+				this.ular.x = this.myCanvas.width;
+			}
+			else if (this.ular.x >= this.myCanvas.width) {
+				this.ular.x = 0;
+			}
+			if (this.ular.y < 0) {
+				this.ular.y = this.myCanvas.height;
+			}
+			else if (this.ular.y >= this.myCanvas.height) {
+				this.ular.y = 0;
+			}
+		}
+	
+		//untuk menghilangkan text gameOver
+		this.removeGameOverText = function(){
+			let gameOverText = document.getElementById("gameOver");
+			gameOverText.style.visibility = "hidden";
+		}
+		
+		//memulai game
+		this.startGame = function(kelas){
+			kelas.removeGameOverText();
+			
+			let level = $('#level').val();
+			$('#levels').html(level);
+			let speed = $('#speed').val();
+			kelas.turningSpeed = parseInt(speed);
+			
+			kelas.ular.x = 0;
+			kelas.ular.y = 200;
+			kelas.randomApple();
+			kelas.drawingObj.drawSnake(kelas.ular.tubuhSnake,kelas.ular.besarUlar);
+			kelas.drawingObj.drawMaze(kelas.maze.getMazeLayout(),kelas.maze.getBesarDinding());
+		}
+		
+		//cek collision ular dengan apel
+		this.appleCollision = function(){
+			let posisiApelX = this.apel.x;
+			let posisiApelY = this.apel.y;
+			let posisiXUlar = this.ular.tubuhSnake[0].x;
+			let posisiYUlar = this.ular.tubuhSnake[0].y;
+			
+			if(posisiXUlar > posisiApelX && posisiYUlar > posisiApelY &&
+			   posisiXUlar < posisiApelX+this.apel.besarApel && posisiYUlar < posisiApelY+this.apel.besarApel){
+					this.appleEaten();
+			}
+		}
+		
+		// ular memakan apel
+		this.appleEaten = function(){
+			this.randomApple();
+			score++;
+			this.ular.panjangTubuhSaatIni++;
+			$('#score').html(score);
+		}
+		
+		//ular menabrak diri sendiri
+		this.snakeCollision = function(){
+			let posisiXUlar = this.ular.tubuhSnake[0].x;
+			let posisiYUlar = this.ular.tubuhSnake[0].y;
+			const besarBoundary = 1;
+			
+			for(var i = 1; i< this.ular.tubuhSnake.length;i++){
+				let bagianTubuhSnakeX = this.ular.tubuhSnake[i].x; 
+				let bagianTubuhSnakeY = this.ular.tubuhSnake[i].y;
+				
+				if(posisiXUlar > bagianTubuhSnakeX-besarBoundary && posisiYUlar > bagianTubuhSnakeY-besarBoundary &&
+				   posisiXUlar < bagianTubuhSnakeX+besarBoundary && posisiYUlar < bagianTubuhSnakeY+besarBoundary ){
+					this.gameOver = true;
+					this.popUpGameOverText();
+				}
+			}	
+		}
+		
+		//ular menabrak dinding
+		this.wallCollision = function(){
+			let arrayLayout = this.maze.getMazeLayout();	
+			let posisiXUlar = this.ular.tubuhSnake[0].x;
+			let posisiYUlar = this.ular.tubuhSnake[0].y;
+			let boundaryWallX = Math.floor(posisiXUlar/10);
+			let boundaryWallY = Math.floor(posisiYUlar/10);
+				
+			if(arrayLayout[boundaryWallY].charAt(boundaryWallX) == '#'){
+				this.gameOver = true;
+				this.popUpGameOverText();
+			}
+		}
+		
+		//untuk menampilkan text gameOver
+		this.popUpGameOverText = function(){
+			let gameOverText = document.getElementById("gameOver");
+			$("#finalScore").html(score);
+			gameOverText.style.visibility = "visible";
+		}
+		
+		
+		
+		//mendapatkan status gameOver
+		this.getGameOverStatus = function(){
+			return this.gameOver;
+		}
+		
+		//posisi untuk animasi
+		this.animate = function(){
+			if(this.gameOver == true){
+				
+			}
+			else{
+				this.context.clearRect(0,0,this.myCanvas.width,this.myCanvas.height);
+				this.ular.move(this.sudut);
+
+				this.sampaiUjung();
+				
+				this.temp = {};
+				this.temp['x'] = this.ular.x;
+				this.temp['y'] = this.ular.y;
+			
+				this.ular.tubuhSnake.unshift(this.temp);
+				if(this.ular.tubuhSnake.length > this.ular.panjangTubuhSaatIni){
+					this.ular.tubuhSnake.pop();
+				}
+			
+				this.drawingObj.drawSnake(this.ular.tubuhSnake,this.ular.besarUlar);
+				this.drawingObj.drawApple(this.apel.x,this.apel.y,this.apel.getBesarApel());
+				this.appleCollision();
+				this.snakeCollision();
+				this.wallCollision();
+				
+				var that = this;
+				setTimeout(function(){
+					that.animate();
+				},50);
+			}
+		}
+		
+		this.checkLevel = function(){
+			let chosenLevel = document.getElementById("level").value;
+			let temp = $("#totalLevel").html();
+			let totalLevel = parseInt(temp);
+			
+			if(chosenLevel != ""){
+				if(chosenLevel > 0 && chosenLevel <= totalLevel){
+					document.getElementById("levelInvalid").style.visibility = "hidden";
+					return true;
+				}
+				else{
+					document.getElementById("levelInvalid").style.visibility = "visible";
+					return false;
+				}
+			}
+			else{
+				document.getElementById("levelInvalid").style.visibility = "visible";
+				return false;
+			}
+			
+		}
+		
+		this.checkSpeed = function(){
+			let chosenSpeed = document.getElementById("speed").value;
+			
+			if(chosenSpeed != ""){
+				if(chosenSpeed > 0 && chosenSpeed <= 10){
+					document.getElementById("speedInvalid").style.visibility = "hidden";
+					return true;
+				}
+				else{
+					document.getElementById("speedInvalid").style.visibility = "visible";
+					return false;
+				}
+			}
+			else{
+				document.getElementById("speedInvalid").style.visibility = "visible";
+				return true;
+			}
+		}
+		
+		this.changeLevel = function(levels){
+			$("#totalLevel").html(levels);
+			return levels;
+		}
+		
+		this.countLevels = function(callback){
+			let level = 0;
+	
+			$.ajax({
+				url: "Levels/",
+				success: function(data){
+					$(data).find("tbody tr a").each(function(i){
+						if(i>4){      
+							level = level+1;
+						}
+					});
+					callback(level);
+				}
+			});
+		}
+		
+		this.loadMaze = function(callback){
+			let level = $('#level').val();
+			let url = "Levels/level"+level+".txt";
+			let temp = this;
+			
+			$.ajax({
+				url: "Levels/level"+level+".txt",
+				dataType: 'text',
+				context: temp,
+				success: function(data,textStatus,jqXHR) {
+					temp.maze.setMazeLayout(jqXHR.responseText);
+					callback(temp);
+				}
+			});
+		}
+		
+		
+	}
+	
+	$(document).ready(function(){
+		var permainan = new Game();
+		permainan.countLevels(permainan.changeLevel);
+		
+		document.getElementById('ok').addEventListener('click',function(){
+			if(permainan.checkSpeed() && permainan.checkLevel()){
+				document.getElementById('menuDiv').style.visibility = 'hidden';
+				permainan.loadMaze(permainan.startGame);
+			}
+			
+			//tombol pergerakan ular 
+			document.addEventListener('keydown', function(e) {	
+				if (e.keyCode == 37) {
+					permainan.moveLeft();
+				}
+				else if (e.keyCode == 39) {
+					permainan.moveRight();
+				}
+			
+				else if(e.keyCode == 13 && permainan.getGameOverStatus() == true){
+					document.location.href="";
+				}
+			});
+		
+			document.addEventListener('touchstart',function(e){
+				var width = $(document).width();
+				var clickX = e.clientX;
+				if(clickX > width/2){
+					permainan.moveLeft();
+				}
+				else{
+					permainan.moveRight();
+				}
+			});
+		
+			function wait(){
+				if(permainan.maze.getMazeLayout() == null){
+					setTimeout(function(){
+						wait();
+					},50);
+				}
+				else{
+					permainan.animate();
+				}
+			}
+		
+			wait();
+		});
+	});
+	
+</script>
